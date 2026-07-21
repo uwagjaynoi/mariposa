@@ -3,7 +3,6 @@ from pandas import DataFrame
 from tqdm import tqdm
 from debugger.debugger_base import BaseDebugger
 from z3 import set_param
-from calculate_average_rank import calculate_rank
 from debugger.options import DbgMode, DebugOptions
 from debugger.edit_tracker import EditTracker
 from debugger.edit_info import EditAction, EditInfo
@@ -282,11 +281,10 @@ class FastFailDebugger(SingletonDebugger):
         super().__init__(tracker)
 
     def rank_edits(self):
-        name_hash = "cache/" + self.name_hash + ".report"
+        freq = self.editor.get_inst_report()
+        ranked = freq.sort_values(by="proof_count", ascending=False)
         edits = []
-        for qname in calculate_rank(
-            name_hash, ranking_heuristic="proof_count"
-        ).qname.values:
+        for qname in ranked.qname.values:
             action = choose_action(self.editor.get_quant_actions(qname))
             edits.append((qname, action))
         return edits
