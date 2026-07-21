@@ -5,7 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 # plt.use('Agg')  # Set to 'Agg' for non-GUI backends
 
-data_dir = "/home/yizhou7/mariposa/data/dbs/"
+from base.defs import DB_ROOT
+
+data_dir = DB_ROOT
 total_sum = 0
 elapsed_dict = {}
 elapsed_times = []

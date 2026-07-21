@@ -1,8 +1,15 @@
+import subprocess
 import sys
 import os
 
-sys.path.append("/home/yizhou7/mariposa/src")
-os.chdir("/home/yizhou7/mariposa/")
+MARIPOSA_ROOT = subprocess.check_output(
+    ["git", "rev-parse", "--show-toplevel"],
+    cwd=os.path.dirname(os.path.abspath(__file__)),
+    text=True,
+).strip()
+
+sys.path.append(os.path.join(MARIPOSA_ROOT, "src"))
+os.chdir(MARIPOSA_ROOT)
 
 from tabulate import tabulate
 
@@ -144,7 +151,7 @@ def calculate_rankings(kw_parameters, queries = None):
         queries = []
 
         # Open and read the 'fast_unknown.txt' file
-        with open('/home/amarshah/mariposa/src/fast_unknown.txt', 'r') as file:
+        with open(os.path.join(MARIPOSA_ROOT, 'src/fast_unknown.txt'), 'r') as file:
             for line in file:
                 processed_line = line.strip()
                 queries.append(processed_line)

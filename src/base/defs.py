@@ -1,3 +1,4 @@
+import os
 import random
 
 
@@ -11,6 +12,10 @@ SINGLE_MUT_ROOT_PREFIX = "gen/smut_"
 
 MARIPOSA = "src/smt2action/target/release/mariposa"
 QUERY_WIZARD = "src/query_wizard.py"
+
+CVC5_HOME = os.environ.get("CVC5_HOME", "../cvc5")
+AXIOM_PROFILER_HOME = os.environ.get("AXIOM_PROFILER_HOME", "../axiom-profiler-2")
+SMT_SCOPE = os.path.join(AXIOM_PROFILER_HOME, "target/release/smt-scope")
 
 EXPER_CONFIG_PATH = "config/expers.json"     
 SOLVER_CONFIG_PATH = "config/solvers.json"

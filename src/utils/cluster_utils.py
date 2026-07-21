@@ -336,5 +336,5 @@ def get_sync_commands(target_host, dirs_to_send):
         assert os.path.exists(d)
         if i % 5 == 0:
             commands.append(f"echo '{i // 5 + 1}/{len(dirs_to_send) // 5}'")
-        commands.append(f"rsync -avz {d} {target_host}:/home/yizhou7/mariposa/ --inplace --delete --relative")
+        commands.append(f"rsync -avz {d} {target_host}:~/mariposa/ --inplace --delete --relative")
     return commands

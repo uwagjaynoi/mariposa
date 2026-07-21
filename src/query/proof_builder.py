@@ -1,4 +1,5 @@
 import os
+from base.defs import CVC5_HOME
 from base.factory import FACT
 from base.solver import CVC5Solver, RCode
 from utils.system_utils import *
@@ -69,21 +70,25 @@ class ProofBuilder:
         log_check(os.path.exists(self.output_proof), 
                 f"failed to create {self.output_proof}")
 
-PLF_SIG_FILES = ["/home/yizhou7/cvc5/deps/share/lfsc/signatures/core_defs.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/util_defs.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/theory_def.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/nary_programs.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/boolean_programs.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/boolean_rules.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/cnf_rules.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/equality_rules.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/arith_programs.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/arith_rules.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/strings_programs.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/strings_rules.plf",
-"/home/yizhou7/cvc5/deps/share/lfsc/signatures/quantifiers_rules.plf"]
+_LFSC_SIG_DIR = os.path.join(CVC5_HOME, "deps/share/lfsc/signatures")
 
-LFSCC_PATH = "/home/yizhou7/cvc5/deps/bin/lfscc"
+PLF_SIG_FILES = [os.path.join(_LFSC_SIG_DIR, name) for name in [
+    "core_defs.plf",
+    "util_defs.plf",
+    "theory_def.plf",
+    "nary_programs.plf",
+    "boolean_programs.plf",
+    "boolean_rules.plf",
+    "cnf_rules.plf",
+    "equality_rules.plf",
+    "arith_programs.plf",
+    "arith_rules.plf",
+    "strings_programs.plf",
+    "strings_rules.plf",
+    "quantifiers_rules.plf",
+]]
+
+LFSCC_PATH = os.path.join(CVC5_HOME, "deps/bin/lfscc")
 
 def check_lfsc_proof(input_proof, output_log, timeout, clear):
     if not os.path.exists(input_proof):

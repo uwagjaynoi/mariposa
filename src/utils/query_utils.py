@@ -3,7 +3,7 @@ import os
 import re
 import subprocess
 
-from base.defs import MARIPOSA
+from base.defs import MARIPOSA, SMT_SCOPE
 from debugger.inst_graph import parse_qidx
 from utils.system_utils import (
     log_check,
@@ -300,10 +300,10 @@ def get_trace_stats_axiom_profiler(trace_path):
     # log_info(f"parsing trace: {trace_path}")
     lines = subprocess_run(
         [
-            "/home/yizhou7/axiom-profiler-2/target/release/smt-scope",
+            SMT_SCOPE,
             "stats",
             trace_path,
-        ], 
+        ],
     )[0]
 
     start = False

@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import subprocess
-from base.defs import MARIPOSA
+from base.defs import MARIPOSA, SMT_SCOPE
 from base.solver import RCode, output_as_rcode
 from debugger.z3_utils import dump_z3_proof
 from debugger.inst_graph import *
@@ -256,7 +256,7 @@ class MutantInfo:
             log_info(f"[graph] building {self.graph_path}")
             subprocess.run(
                 [
-                    "/home/yizhou7/axiom-profiler-2/target/release/smt-scope",
+                    SMT_SCOPE,
                     "dependencies",
                     self.trace_path,
                 ],
@@ -275,7 +275,7 @@ class MutantInfo:
             log_info(f"[stats] building {self.stats_path}")
             subprocess.run(
                 [
-                    "/home/yizhou7/axiom-profiler-2/target/release/smt-scope",
+                    SMT_SCOPE,
                     "stats",
                     self.trace_path,
                 ],
