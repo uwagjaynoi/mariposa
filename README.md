@@ -30,7 +30,7 @@ cargo build --release
 cd -
 ```
 
-3. For preprocessing queries, building proof traces, creating unsat cores, and generating various log files, we use the [ninja](https://ninja-build.org/) build system. Please make sure that is installed. 
+3. For preprocessing queries, building proof traces, creating unsat cores, and generating various log files, we use the [ninja](https://ninja-build.org/) build system. Please make sure that is installed.
 
 4. You will need a working Python 3 installation to run the code that performs the experiments and analysis.  This code was written using Python `3.8.10` (and has not been tested on other versions).  To install the required packages, run
 ```
@@ -55,18 +55,18 @@ python3 src/exper_wizard.py single -s z3_4_12_2_osx -i data/samples/single_check
 This will test the stability of the query `data/samples/single_check.smt2` on the solver `Z3 4.12.2`, using the default settings for experiments. The result should be something like this:
 
 ```
-[INFO] running 1 original queries 
-[INFO] exp config:	default 
-[INFO] project dir:	gen/single_proj/ 
-[INFO] solver path:	bin/z3-4.12.2 
-[INFO] analyzer:	default 
+[INFO] running 1 original queries
+[INFO] exp config:	default
+[INFO] project dir:	gen/single_proj/
+[INFO] solver path:	bin/z3-4.12.2
+[INFO] analyzer:	default
 | category   |   count | percentage   |
 |------------|---------|--------------|
 | stable     |       1 | 100.0 %      |
 | total      |       1 | 100.00 %     |
-[INFO] listing stable queries... 
-[INFO] query path:		gen/single_proj/split.smt2 
-[INFO] procedure name:		Function-Def bitvector_equivalence::equivalence_proof_lower_n 
+[INFO] listing stable queries...
+[INFO] query path:		gen/single_proj/split.smt2
+[INFO] procedure name:		Function-Def bitvector_equivalence::equivalence_proof_lower_n
 plain query unsat in 0.022s
 mutation      unsat    unknown    timeout    mean    std
 ----------  -------  ---------  ---------  ------  -----
@@ -78,17 +78,17 @@ The solver and query pair is expected to be stable, as shown above.
 Each row is a summary of results from a mutation method, which includes the success rate, mean of response times, and standard deviation of response times.
 The success count is also given.
 Using the default configuration,`60` mutants are generated for each mutation method in addition to the original query.
-Therefore `61/61` means all the mutants (and the original) succeeded for a mutation method. 
+Therefore `61/61` means all the mutants (and the original) succeeded for a mutation method.
 
 ## Mariposa Concepts
 
-Mariposa's operations are organized around some concepts. 
+Mariposa's operations are organized around some concepts.
 
 * Solver $(S)$: an SMT solver such as z3 or cvc5. A solver must be configured before being used in Mariposa. Please see [configuration](doc/config.md) for more details.
 * Query $(Q)$: an individual SMT query. This typically refers to a **preprocessed** query.
-* Project $(P)$: a collection of SMT queries, typically originated from the same verification project. For example, [Komodo](https://github.com/microsoft/Komodo) produces a set of SMT queries, which we consider as a project in our analysis. The queries from a verification project usually corresponds to a **base project**, which identifies a **project group**. 
+* Project $(P)$: a collection of SMT queries, typically originated from the same verification project. For example, [Komodo](https://github.com/microsoft/Komodo) produces a set of SMT queries, which we consider as a project in our analysis. The queries from a verification project usually corresponds to a **base project**, which identifies a **project group**.
 * Project Group $(G)$: a collection of projects, originated from the same base project through some **query action**. For example, if we take apply the unsat-core action to queries in the Komodo base project, we obtain another project under this project group. Similarly, if we apply the shake query action to queries in the Komodo base project, we obtain yet another project under the same group.
-* Query Operation $(O)$: an operation at the query level. For example, the unsat-core action takes a query $Q_0$ as input, and produces a $Q_{core}$ that is a subset of the assertions (commands) in $Q_0$. 
+* Query Operation $(O)$: an operation at the query level. For example, the unsat-core action takes a query $Q_0$ as input, and produces a $Q_{core}$ that is a subset of the assertions (commands) in $Q_0$.
 * Experiment Config $(C) $: a set of parameters to configure how experiment is ran. Please see [configuration](doc/config.md) for more details.
 * Experiment Instance $E$: an instance of the Mariposa experiment, identified by the a tuple of $(C,P,S)$, i.e., an experiment configuration, a project, and a solver.
 * Analyzer $(A)$: configures how the stability status should be decided. An analyzer can be applied to a existing experiment instance. Please see [configuration](doc/config.md) for more details on how to customize the analyzer.
@@ -120,17 +120,17 @@ The "common" way of using Mariposa is through the `exper_wizard`, which operates
 ### Experiment with a Single Query
 
 The two required arguments for the `single` mode are:
-* `-i/--input-query-path`, the path to the query 
+* `-i/--input-query-path`, the path to the query
 * `-s/--solver`, the name of the solver (see `config/solvers.json`)
 
-The results are stored in a temporary database under `gen/`. This mode can handle a query with multiple `(check-sat)` commands. In that case, the input query will be split for each `(check-sat)`. For example: 
+The results are stored in a temporary database under `gen/`. This mode can handle a query with multiple `(check-sat)` commands. In that case, the input query will be split for each `(check-sat)`. For example:
 
 ```
 python3 src/exper_wizard.py single -i data/samples/multiple_checks.smt2 --clear-existing
 ```
 The query file actually contains three `(check-sat)` commands. The split queries are placed in `gen/single_proj/`.
 ```
-[INFO] running 3 original queries 
+[INFO] running 3 original queries
 exp config:	default
 project dir:	gen/single_proj/
 solver path:	bin/z3-4.12.2
@@ -144,41 +144,41 @@ analyzer:	default
 ```
 The temporary database is also under `gen/single_proj/`. One can also repeat the analysis without the experiment, without the `--clear-existing` flag.
 ```
-python3 src/exper_wizard.py single -i data/samples/multiple_checks.smt2 
+python3 src/exper_wizard.py single -i data/samples/multiple_checks.smt2
 ```
-The above will load the temporary database. Please note the temporary results will be overwritten by any further experiment that specifies `--clear-existing`. 
+The above will load the temporary database. Please note the temporary results will be overwritten by any further experiment that specifies `--clear-existing`.
 
 ### Experiment with a Project
 
-`exper_wizard` manages the experiments over a project. It maintains a directory structure for projects under `data/`. Please do not manually interfere with the sub-directories, including `data/projs`,  `data/dbs` or `data/logs`, otherwise unexpected errors might occur. Mariposa should automatically handle the bookkeeping of project and experiment results (if not, that is a bug, and PR or issues are welcome). 
+`exper_wizard` manages the experiments over a project. It maintains a directory structure for projects under `data/`. Please do not manually interfere with the sub-directories, including `data/projs`,  `data/dbs` or `data/logs`, otherwise unexpected errors might occur. Mariposa should automatically handle the bookkeeping of project and experiment results (if not, that is a bug, and PR or issues are welcome).
 
 #### 1. Create a New Project
 
-First, we need to create a project, otherwise Mariposa does not know how to manage the project group. Moreover, the queries in the wild typically does not conform to the standard SMT-LIB format, so it is **really necessary** for Mariposa to pre-process the queries at this step! 
+First, we need to create a project, otherwise Mariposa does not know how to manage the project group. Moreover, the queries in the wild typically does not conform to the standard SMT-LIB format, so it is **really necessary** for Mariposa to pre-process the queries at this step!
 
-As an example, we can use the following command to create a project named `sample` out of the queries under `data/samples/`. 
+As an example, we can use the following command to create a project named `sample` out of the queries under `data/samples/`.
 
 `./src/proj_wizard.py create -i data/samples/ --new-project-name sample`
 
 It should ask for a confirmation to run the build script that generates the pre-processed files:
 
 ```
-[INFO] output directory is set to data/projs/sample/base.z3 
-[INFO] generated 8 targets in build.ninja 
+[INFO] output directory is set to data/projs/sample/base.z3
+[INFO] generated 8 targets in build.ninja
 [INFO] run `ninja -j 6 -k 0` to start building? [Y]  Y
 ```
 
 If we answer `Y`, the output should look something like the following.
 
 ```
-[INFO] generated 11 files in data/projs/sample/base.z3 
+[INFO] generated 11 files in data/projs/sample/base.z3
 ```
 
 This means a new project group named `sample` is created, which contains a base project named `base.z3`, and that project contains 11 queries.
 
 #### 2. Running Experiment on a Project
 
-Now that we have created a new project, we can run an experiment with that project using `exper_wizard`, by specifying the directory. Please note that any directory that is not created by the `proj_wizard` will likely cause problems. 
+Now that we have created a new project, we can run an experiment with that project using `exper_wizard`, by specifying the directory. Please note that any directory that is not created by the `proj_wizard` will likely cause problems.
 
 ```
 ./src/exper_wizard.py multiple -i data/projs/sample/base.z3/ -e debug
@@ -187,7 +187,7 @@ Now that we have created a new project, we can run an experiment with that proje
 It might take a few minutes for `exper_wizard` to run. The expected result should look something as the following:
 
 ```
-[INFO] running 11 original queries 
+[INFO] running 11 original queries
 exp config:	debug
 project dir:	data/projs/sample/base.z3
 solver path:	bin/z3-4.12.2
@@ -219,7 +219,7 @@ project group: sample
 
 #### 3. Running Analysis on a Experiment
 
-After an experiment is finished, we can run analysis on it. 
+After an experiment is finished, we can run analysis on it.
 
 ```
 ./src/analysis_wizard.py basic -i data/projs/sample/base.z3 -e debug --analyzer 2sec
