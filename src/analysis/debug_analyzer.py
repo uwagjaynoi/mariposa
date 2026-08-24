@@ -5,7 +5,7 @@ from tabulate import tabulate
 
 def analyze_debug():
     ana = FACT.get_analyzer("10sec")
-    solver = FACT.get_solver("z3_4_13_0")
+    solver = FACT.get_solver("z3_4_16_0")
     cfg = FACT.get_config("verus_quick")
 
     projects = []

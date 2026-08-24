@@ -51,6 +51,8 @@ class BaseDebugger:
             self.status = DebugStatus.NO_PROOF
             return
 
+        self._discard_stale_strainer_state()
+
         if has_cache(self._report_cache):
             self.status = DebugStatus.FINISHED_RAW
             # load report if it's cached
@@ -61,6 +63,33 @@ class BaseDebugger:
         if self.status.is_finished():
             # build report if it's finished
             assert self.report is not None
+
+    def _discard_stale_strainer_state(self):
+        """Remove completed candidate experiments detached from this tracker.
+
+        Candidate project databases outlive ``dbg/<hash>/edits.json``.  This
+        happens, for example, when a batch clears ``dbg`` before rerunning a
+        query.  A finished Strainer then exposes old edit IDs that the fresh
+        tracker cannot resolve, making report construction fail.  Do not reuse
+        such a project: its experiment data belongs to a different edit set.
+        """
+        strainer = self.strainer
+        if not strainer.status.is_finished():
+            return
+
+        tested_ids = set(strainer.tested.qids)
+        current_ids = set(self.tracker.edit_infos)
+        missing_ids = tested_ids - current_ids
+        if not missing_ids:
+            return
+
+        log_warn(
+            f"[dbg] discarding stale {self.proj_name}: "
+            f"{len(missing_ids)} tested edit ID(s) are absent from the tracker"
+        )
+        strainer.clear_all()
+        self.clear_report_cache()
+        del self.__dict__["strainer"]
 
     @property
     def editor(self) -> InformedEditor:

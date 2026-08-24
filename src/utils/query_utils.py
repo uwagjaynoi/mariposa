@@ -318,14 +318,21 @@ def get_trace_stats_axiom_profiler(trace_path):
         if not start:
             continue
 
-        line = line.strip().split(" ")
-        qidx = parse_qidx(line[1])
-        name, count = line[0], int(line[2])
-        assert qidx not in processed
+        fields = line.strip().split()
+        if len(fields) == 3 and fields[1] == "=":
+            # Current SmtScope emits ``<count> = <quantifier-name>``.  Its
+            # report has no internal q-index, but quantifier names are the
+            # keys consumed by the differential-ranking code below.
+            name, count = fields[2], int(fields[0])
+        else:
+            # Older Axiom Profiler / SmtScope releases emit
+            # ``<quantifier-name> q<index> <count>``.
+            name, qidx, count = fields[0], parse_qidx(fields[1]), int(fields[2])
+            assert qidx not in processed
+            processed.add(qidx)
         if name not in counts:
             counts[name] = 0
         counts[name] += count
-        processed.add(qidx)
     return counts
 
 def add_qids_to_query(query_path, dest=None, check=True):

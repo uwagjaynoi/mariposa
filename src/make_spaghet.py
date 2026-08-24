@@ -7,9 +7,9 @@ from utils.system_utils import list_smt2_files, log_info, log_warn
 
 def get_exp_command(project_dir, cfg, local):
     if local:
-        return f"./src/exper_wizard.py multiple -e {cfg} -s z3_4_13_0 -i {project_dir} --clear"
+        return f"./src/exper_wizard.py multiple -e {cfg} -s z3_4_16_0 -i {project_dir} --clear"
 
-    return f"./src/exper_wizard.py manager -e {cfg} --total-parts 12 -s z3_4_13_0 -i {project_dir} --clear"
+    return f"./src/exper_wizard.py manager -e {cfg} --total-parts 12 -s z3_4_16_0 -i {project_dir} --clear"
 
 
 def main():
@@ -74,7 +74,7 @@ def main():
         os.system(exp_command)
 
         filter_command = (
-            f"./src/analysis_wizard.py filter -s z3_4_13_0 -i {project_dir}"
+            f"./src/analysis_wizard.py filter -s z3_4_16_0 -i {project_dir}"
         )
         os.system(filter_command)
         filter_dir = project_dir.replace("/base.z3", ".filtered/base.z3")
@@ -95,7 +95,7 @@ def main():
         log_info(f"iteration {i}, current query count: {query_count}, experimenting...")
         os.system(exp_command)
 
-        carve_command = f"./src/analysis_wizard.py carve -e {filter_cfg} -s z3_4_13_0 -i {filter_dir}"
+        carve_command = f"./src/analysis_wizard.py carve -e {filter_cfg} -s z3_4_16_0 -i {filter_dir}"
         log_info(f"iteration {i}, current query count: {query_count}, carving...")
         os.system(carve_command)
 

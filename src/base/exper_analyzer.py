@@ -111,7 +111,8 @@ class ExperAnalyzer:
     def qids(self):
         return self.__qr_keys
 
-    def print_status(self, category_verbosity=0, query_verbosity=0, is_verus=False, category=None):
+    def print_status(self, category_verbosity=0, query_verbosity=0, is_verus=False,
+                     category=None, print_problem_queries=False):
         if category is not None:
             if category not in self.stability_categories:
                 print(f"no queries in category {category}")
@@ -131,6 +132,9 @@ class ExperAnalyzer:
         self.stability_categories.print_status(skip_empty=True)
         # self.failure_types.print_status(skip_empty=True)
         print("")
+
+        if print_problem_queries:
+            self.print_problem_queries()
 
         if category_verbosity == 0:
             print_banner("Report End")
@@ -157,6 +161,18 @@ class ExperAnalyzer:
 
             print("")
         print_banner("Report End")
+
+    def print_problem_queries(self):
+        """Print a compact, deterministic list of queries that need attention."""
+        for category in (Stability.UNSTABLE, Stability.UNSOLVABLE):
+            qids = sorted(self.stability_categories[category])
+            print_banner(f"{category.value.title()} Queries ({len(qids)})")
+            if not qids:
+                print("none")
+            else:
+                for qid in qids:
+                    print(f"{qid}: {self[qid].query_path}")
+            print("")
 
     def get_mutant_details(self, qr):
         rows = self.exp.get_mutants(qr.qid)

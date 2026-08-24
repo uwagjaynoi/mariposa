@@ -45,7 +45,12 @@ def handle_basic(args):
     exp = args.experiment
     log_check(exp.is_done(), "experiment results do not exist")
     ba = ExperAnalyzer(exp, args.analyzer)
-    ba.print_status(category_verbosity=args.category_verbosity, query_verbosity=args.query_verbosity, category=args.category)
+    ba.print_status(
+        category_verbosity=args.category_verbosity,
+        query_verbosity=args.query_verbosity,
+        category=args.category,
+        print_problem_queries=True,
+    )
 
 
 def set_up_verify(subparsers):
@@ -144,7 +149,7 @@ def handle_filter(args):
 
     if not exp.is_done():
         log_warn("experiment results do not exist, run the following command:")
-        print(f"./src/exper_wizard.py manager -e verify --total-parts 30 -s z3_4_13_0 -i {exp.proj.sub_root} --clear")
+        print(f"./src/exper_wizard.py manager -e verify --total-parts 30 -s z3_4_16_0 -i {exp.proj.sub_root} --clear")
         return
 
     ba = SingletonAnalyzer(exp, args.analyzer)

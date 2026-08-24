@@ -29,7 +29,7 @@ class TraceAnalyzer:
         woco = group.get_project(PT.from_str("woco.z3"), build=True)
         cfg = FACT.get_config("verus_ext")
         ana = FACT.get_analyzer("5sec")
-        sol: Solver = FACT.get_solver("z3_4_12_5")
+        sol: Solver = FACT.get_solver("z3_4_16_0")
         exp = FACT.load_analysis(orig, cfg, sol, ana)
         log_dir = exp.get_log_dir(KnownExt.Z3_TRACE)
 

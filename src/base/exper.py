@@ -1,4 +1,5 @@
 import binascii
+import hashlib
 import os, random
 import numpy as np
 
@@ -212,6 +213,25 @@ class Experiment(ExpConfig):
         # reset_dir(self.gen_dir, True)
 
         self.retry_count = 0
+        self._set_seed = None
+
+    def set_seed(self, seed):
+        self._set_seed = seed
+
+    def get_task_order_seed(self, salt):
+        if self._set_seed is None:
+            return None
+        payload = f"{self._set_seed:x}:{self.signature()}:{salt}".encode("utf-8")
+        return int.from_bytes(hashlib.blake2b(payload, digest_size=8).digest(), "big")
+
+    def get_mutant_seed(self, origin_path, mutation, index):
+        if self._set_seed is None:
+            return int(binascii.hexlify(os.urandom(8)), 16)
+        payload = (
+            f"{self._set_seed:x}:{self.signature()}:{get_qid(origin_path)}:"
+            f"{mutation}:{index}"
+        ).encode("utf-8")
+        return int.from_bytes(hashlib.blake2b(payload, digest_size=8).digest(), "big")
 
     def signature(self):
         return f"{self.proj.full_name}_{self.proj.part}_{self.solver}_{self.exp_name}"
@@ -251,8 +271,8 @@ class Experiment(ExpConfig):
                 tasks.append(qtask)
                 continue
 
-            for _ in range(self.num_mutant):
-                s = int(binascii.hexlify(os.urandom(8)), 16)
+            for i in range(self.num_mutant):
+                s = self.get_mutant_seed(origin_path, m, i)
                 mut_path = f"{self.gen_dir}/{base}.{str(s)}.{m}.smt2"
                 task = ExpTask(origin_path, mut_path, m, s)
                 tasks.append(task)

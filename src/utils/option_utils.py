@@ -24,7 +24,7 @@ def add_restart_option(parser):
     parser.add_argument("--restarts", default=60, required=False, help="the number of restarts")
 
 def add_solver_option(parser):
-    parser.add_argument("-s", "--solver", default="z3_4_13_0", help="the solver name (from solvers.json) to use")
+    parser.add_argument("-s", "--solver", default="z3_4_16_0", help="the solver name (from solvers.json) to use")
 
 def add_analysis_options(parser):
     parser.add_argument("-e", "--exp-config", default="default", help="the experiment configuration name (from exps.json)")
@@ -34,9 +34,13 @@ def add_analysis_options(parser):
     parser.add_argument("--category", type=str, default="none", help="if specified, only analyze the specified category")
     parser.add_argument("-qv", "--query-verbosity", type=int, default=0, help="level of verbosity for each query in the analysis")
 
+def add_set_seed_option(parser):
+    parser.add_argument("--set-seed", default=None, help="hex seed for reproducible mutant seeds and task ordering")
+
 def add_experiment_options(parser):
     add_analysis_options(parser)
     add_clear_option(parser)
+    add_set_seed_option(parser)
 
 def add_new_project_option(parser):
     parser.add_argument("--new-project-name", required=True, help="the project group name to be created under data/projects/ (only for preprocess!)")
@@ -100,11 +104,18 @@ def deep_parse_args(args):
             args.seed = None
 
     if hasattr(args, "input_query_path"):
-        log_check(file_exists(args.input_query_path), 
+        log_check(file_exists(args.input_query_path),
                   "input query does not exist or not a file")
 
     if hasattr(args, "mutation"):
         args.mutation = Mutation(args.mutation)
+
+    if hasattr(args, "set_seed") and args.set_seed is not None:
+        seed_text = str(args.set_seed)
+        try:
+            args.set_seed = int(seed_text, 16)
+        except ValueError:
+            log_check(False, f"--set-seed must be a hexadecimal integer, got {seed_text}")
 
     single = args.sub_command in {"single", "trace-diff"}
 
@@ -120,6 +131,9 @@ def deep_parse_args(args):
         else:
             args.experiment = FACT.get_exper(
                 args.input_proj, args.exp_config, args.solver, build=True)
+
+        if hasattr(args, "set_seed") and args.set_seed is not None:
+            args.experiment.set_seed(args.set_seed)
 
     if hasattr(args, "timeout"):
         args.timeout = int(args.timeout)

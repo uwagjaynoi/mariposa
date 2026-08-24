@@ -45,6 +45,9 @@ class DebugOptions:
         self.retry_failed = False
         self.verbose = False
         self.build_proof = True
+        # Only use trace/core/proof artifacts loaded from the debugger cache.
+        # Do not construct any new debugger artifacts.
+        self.cached_proofs_only = False
 
         self.mutant_count = 30
 
@@ -61,6 +64,10 @@ class DebugOptions:
         self.per_proof_time_sec = 30
 
         self.edit_count = 10
+        self.set_seed = None
+        # Optional parent-process timing records for build_all phases.  This
+        # must remain pickleable because DebugOptions is passed to pool workers.
+        self.timing_records = None
         self.is_verus = None  # auto-conf if None
 
         self.mode = DbgMode.AUTO  # auto-conf

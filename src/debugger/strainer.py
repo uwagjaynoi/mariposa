@@ -8,7 +8,7 @@ from base.factory import FACT
 from utils.system_utils import list_smt2_files, log_debug
 
 
-SOLVER = FACT.get_solver("z3_4_13_0")
+SOLVER = FACT.get_solver("z3_4_16_0")
 VERI_CFG = FACT.get_config("verify")
 
 CFG_10 = FACT.get_config("verus_quick")
@@ -30,6 +30,7 @@ def get_exp_params(is_verus):
 
 class DebugStatus(Enum):
     NO_PROOF = "no proof"
+    NO_TRACE = "no trace"
 
     NOT_CREATED = "not created"
     NOT_TESTED = "not yet tested"

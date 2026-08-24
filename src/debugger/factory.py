@@ -1,3 +1,5 @@
+# This is a Cazamariposa file
+
 import os
 from pandas import DataFrame
 from tqdm import tqdm
@@ -39,8 +41,18 @@ def get_debugger(
 
     mode = options.mode
 
+    # Caza needs both a proof and a trace to construct an informed editor.
+    # Return a terminal status rather than dereferencing None during AUTO mode
+    # selection.
+    trace = tracker.get_candidate_trace()
+    if trace is None:
+        log_warn(f"[init] {tracker.name_hash} no candidate trace available")
+        options.mode = DbgMode.FAST_FAIL
+        debugger = FastFailDebugger(tracker)
+        debugger.status = DebugStatus.NO_TRACE
+        return debugger
+
     if mode == DbgMode.AUTO:
-        trace = tracker.get_candidate_trace()
         reason = trace.get_failed_reason()
 
         if reason == TraceFailure.TIMEOUT:

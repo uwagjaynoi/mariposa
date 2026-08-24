@@ -1,7 +1,8 @@
 import json
-import binascii, random
+import random
 import pandas as pd
 import os
+import time
 from base.defs import DEBUG_ROOT
 from base.solver import RCode
 from debugger.options import DebugOptions
@@ -85,6 +86,7 @@ class MutantBuilder:
         self.proofs: List[MutantInfo] = []
         self.cores: List[MutantInfo] = []
         self.options: DebugOptions = options
+        self._rng = random.Random(options.set_seed)
 
         self.__init_dirs()
         self.__init_query_files(query_path)
@@ -106,9 +108,24 @@ class MutantBuilder:
         self.build_all()
 
     def build_all(self):
-        self.build_traces()
-        self.build_cores()
-        self.build_proofs()
+        if self.options.cached_proofs_only:
+            log_info("[init] cached-proofs-only: skipping trace, core, and proof construction")
+            return False
+        self.__time_build_phase("build_traces", self.build_traces)
+        self.__time_build_phase("build_cores", self.build_cores)
+        return self.__time_build_phase("build_proofs", self.build_proofs)
+
+    def __time_build_phase(self, label, build_phase):
+        """Run one build phase and report its elapsed time when requested."""
+        start = time.perf_counter()
+        try:
+            return build_phase()
+        finally:
+            timings = self.options.timing_records
+            if timings is not None:
+                # ``build_all`` itself runs in the parent process.  Worker
+                # copies of this list are irrelevant and never append here.
+                timings.append((label, time.perf_counter() - start, False))
 
     def __init_dirs(self):
         for dir in [
@@ -170,8 +187,12 @@ class MutantBuilder:
     def __init_mutant_infos(self):
         if not os.path.exists(self.meta_dir):
             os.makedirs(self.meta_dir)
+            log_info("[init] no cached mutant metadata")
             return
 
+        loaded_traces = 0
+        loaded_cores = 0
+        loaded_proofs = 0
         for mut_meta in list_files_ext(self.meta_dir, ".json"):
             try:
                 d = json.load(open(mut_meta, "r"))
@@ -183,10 +204,18 @@ class MutantBuilder:
 
             if mi.has_trace():
                 self.traces.append(mi)
+                loaded_traces += 1
             if mi.has_core():
                 self.cores.append(mi)
+                loaded_cores += 1
             if mi.has_proof():
                 self.proofs.append(mi)
+                loaded_proofs += 1
+
+        log_info(
+            "[init] loaded cached artifacts: "
+            f"traces={loaded_traces}, cores={loaded_cores}, proofs={loaded_proofs}"
+        )
 
     def clear_mutants(self, clear_traces, clear_cores, clear_proofs):
         if clear_traces:
@@ -206,10 +235,10 @@ class MutantBuilder:
 
         for m in mutations:
             for _ in range(self.options.mutant_count):
-                s = int(binascii.hexlify(os.urandom(8)), 16)
+                s = self._rng.getrandbits(64)
                 args.append(MutantInfo(self.sub_root, m, s, self.options))
 
-        random.shuffle(args)
+        self._rng.shuffle(args)
         return args
 
     def build_traces(self):
@@ -290,8 +319,11 @@ class MutantBuilder:
                 _build_proof, args, goal=goal, time_bound=self.options.total_proof_time_sec
             )
 
-        log_check(len(res) != 0, "no proof found")
+        if len(res) == 0:
+            log_warn("[proof] no proof found")
+            return False
         self.proofs += res
+        return True
 
     def get_fast_unknown_trace(self):
         uk_mis = [mi for mi in self.traces if mi.trace_rcode == RCode.UNKNOWN]
@@ -320,10 +352,10 @@ class MutantBuilder:
         if r := self.get_fast_unknown_trace():
             return r
 
-        random.seed(43)
         if self.traces == []:
             return None
-        return random.choice(self.traces)
+        seed = 43 if self.options.set_seed is None else self.options.set_seed
+        return random.Random(seed).choice(self.traces)
 
     def print_status(self):
         log_info(f"orig path: {self.orig_path}")

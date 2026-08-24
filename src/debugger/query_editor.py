@@ -1,4 +1,5 @@
 from typing import List, Set
+import hashlib
 from debugger.edit_info import EditAction, run_z3
 from debugger.query_loader import QueryLoader
 from debugger.z3_utils import *
@@ -9,12 +10,17 @@ import z3
 
 
 class QueryEditor(QueryLoader):
-    def __init__(self, in_file_path):
+    def __init__(self, in_file_path, set_seed=None):
         super().__init__(in_file_path)
         self._reset_state()
 
         self.__skv_count = 0
-        self.__skolem_prefix = "skv_" + os.urandom(8).hex() + "_"
+        if set_seed is None:
+            suffix = os.urandom(8).hex()
+        else:
+            payload = f"{set_seed:x}:{in_file_path}".encode("utf-8")
+            suffix = hashlib.blake2b(payload, digest_size=8).hexdigest()
+        self.__skolem_prefix = "skv_" + suffix + "_"
 
     def _reset_state(self):
         self._new_commands = []

@@ -18,7 +18,7 @@ for file_name in os.listdir(data_dir):
         db_path = os.path.join(base_path, "verify.db")
         
         if os.path.exists(db_path):
-            table_name = f"{file_name}_base_z3_z3_4_13_0_exp"
+            table_name = f"{file_name}_base_z3_z3_4_16_0_exp"
             query = f"SELECT SUM(elapsed_milli) FROM {table_name};"
             
             try:

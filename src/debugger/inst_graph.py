@@ -1,4 +1,5 @@
 from typing import Dict
+import re
 import networkx as nx
 import numpy as np
 from tqdm import tqdm
@@ -42,14 +43,25 @@ def parse_qidx(item):
 class TheirParser:
     def __init__(self, graph_path, stats_path):
         self.qidx_to_name = dict()
+        self._name_to_qidx = dict()
         blames = self.__parse_into_blames(graph_path)
         self.__deduplicate_blames(blames)
         self.__parse_stats(stats_path)
 
     def __parse_into_blames(self, graph_path):
         lines = read_file_into_list(graph_path)
+        if not lines:
+            raise ValueError(f"empty SmtScope dependency graph: {graph_path}")
+        if lines[0].startswith("Z3 "):
+            return self.__parse_legacy_graph(lines)
+        return self.__parse_modern_graph(lines)
+
+    def __parse_legacy_graph(self, lines):
         line_no = 0
-        assert lines[line_no] == "Z3 4.13.0"
+        # Older SmtScope versions prefix this format with the Z3 version.  The
+        # graph layout, rather than the exact solver version, is what matters.
+        if not lines[line_no].startswith("Z3 "):
+            raise ValueError(f"unrecognised SmtScope dependency graph header: {lines[line_no]}")
         line_no += 1
 
         cur = None
@@ -74,6 +86,44 @@ class TheirParser:
             line_no += 1
 
         return blames
+
+    def __parse_modern_graph(self, lines):
+        """Parse current SmtScope's ``source (x%) -> target (y%)`` output."""
+        blames = []
+        sources = set()
+        source_pattern = re.compile(r"^(.*?)\s+\(([0-9.]+)%\)(?:, .*?)?\s+->\s*(.*)$")
+        target_pattern = re.compile(r"(.*?)\s+\(([0-9.]+)%\)")
+
+        for line in lines:
+            match = source_pattern.match(line)
+            if match is None:
+                raise ValueError(f"unrecognised SmtScope dependency line: {line}")
+            source, targets = match.group(1), match.group(3)
+            source_qidx = self.__modern_qidx(source)
+            sources.add(source_qidx)
+            blame = InstBlame(source_qidx, 1)
+            for target in target_pattern.finditer(targets):
+                target_qidx = self.__modern_qidx(target.group(1))
+                # SmtScope reports an edge's share as a percentage.  Preserve
+                # that ratio as an integer weight for TraceInstGraph.
+                weight = max(1, round(float(target.group(2)) * 1000))
+                blame.add_reason(target_qidx, weight)
+            blames.append(blame)
+
+        # Some target quantifiers have no dependency line of their own.  Keep
+        # them as zero-outgoing-edge nodes so later graph traversal can still
+        # look up their name and instantiation count.
+        for qidx in self.qidx_to_name:
+            if qidx not in sources:
+                blames.append(InstBlame(qidx, 1))
+        return blames
+
+    def __modern_qidx(self, name):
+        if name not in self._name_to_qidx:
+            qidx = len(self._name_to_qidx)
+            self._name_to_qidx[name] = qidx
+            self.__register_name(qidx, name)
+        return self._name_to_qidx[name]
 
     def __register_name(self, qidx, name):
         if qidx not in self.qidx_to_name:
@@ -106,7 +156,6 @@ class TheirParser:
 
     def __parse_stats(self, stats_path):
         lines = read_file_into_list(stats_path)
-        line_no = 0
         start = False
         for line in lines:
             if line == "top-instantiations=":
@@ -114,13 +163,26 @@ class TheirParser:
                 continue
             if not start:
                 continue
-            items = line.split(" ")
-            name, qidx, count = items[0], parse_qidx(items[1]), int(items[2])
+            items = line.split()
+            if len(items) == 3 and items[1] == "=":
+                # Current SmtScope: ``<count> = <quantifier-name>``.
+                count, name = int(items[0]), items[2]
+                qidx = self._name_to_qidx.get(name)
+                if qidx is None:
+                    continue
+            else:
+                # Older Axiom Profiler / SmtScope:
+                # ``<quantifier-name> q<index> <count>``.
+                name, qidx, count = items[0], parse_qidx(items[1]), int(items[2])
             if qidx not in self.blames:
                 if count != 0:
                     print(f"qidx {qidx} not found in blames", name, count)
                 continue
             self.blames[qidx].stat_count = count
+
+        for blame in self.blames.values():
+            if blame.stat_count is None:
+                blame.stat_count = 0
 
 
 class TraceInstGraph(nx.DiGraph):
@@ -196,7 +258,7 @@ class TraceInstGraph(nx.DiGraph):
 
             def has_converged(self):
                 return len(self.converged) == len(self.reachable)
-            
+
             def __update(self, qidx, curr):
                 if np.isclose(curr, 1, atol=1e-3):
                     curr = 1
@@ -210,7 +272,7 @@ class TraceInstGraph(nx.DiGraph):
                 prev = self.ratios[qidx]
                 count = self.graph.blames[qidx].stat_count
 
-                if (np.isclose(prev*count, curr*count, atol=1) or 
+                if (np.isclose(prev*count, curr*count, atol=1) or
                     np.isclose(prev, curr, atol=1e-4)):
                     self.converged.add(qidx)
 

@@ -147,7 +147,7 @@ class MutantInfo:
 
         # soft timeout (-t) is used, otherwise the log might be malformed
         solver_args = [
-            "./bin/z3-4.13.0",
+            "./bin/z3-4.16.0",
             f"-t:{self.options.per_trace_time_sec *1000}",
             self.mut_path,
             "trace=true",
@@ -193,7 +193,7 @@ class MutantInfo:
         cf = open(self.core_log, "w+")
         subprocess.run(
             [
-                "./bin/z3-4.13.0",
+                "./bin/z3-4.16.0",
                 self.mut_lbl_path,
                 f"-t:{self.options.per_core_time_sec*1000}",
             ],

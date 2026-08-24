@@ -206,7 +206,7 @@ class Factory:
         return ExperAnalyzer(exps[0], ana, group_qids=group_qids)
 
     def load_default_analysis(self, proj: Project, group_qids=None) -> ExperAnalyzer:
-        solver = self.get_solver("z3_4_12_5")
+        solver = self.get_solver("z3_4_16_0")
         cfg = self.get_config("default")
         ana = self.get_analyzer("60nq")
         return self.load_analysis(

@@ -85,16 +85,17 @@ def run_tasks(worker, queue):
         if task is None:
             break
 
+        # log_debug(f"worker {worker.worker_id} taking one task")
         elapsed = time.time() - start_time
-        if elapsed - prev_time > 120:
+        if elapsed - prev_time > 600:
             prev_time = elapsed
             qsize = try_get_size(queue)
             print_eta(elapsed, qsize, init_size)
 
         worker.run_task(task)
 
-    elapsed = round((time.time() - start_time) / 3600, 2)
-    log_debug(f"worker {worker.worker_id} finished in {elapsed} hours")
+    elapsed = round((time.time() - start_time) , 2)
+    log_debug(f"worker {worker.worker_id} finished in {elapsed} seconds")
 
 
 class Runner:
@@ -123,12 +124,17 @@ class Runner:
         self.update_experiment(mqids)
 
     def __run(self, tasks):
-        random.shuffle(tasks)
+        order_seed = self.exp.get_task_order_seed("runner")
+        if order_seed is None:
+            random.shuffle(tasks)
+        else:
+            random.Random(order_seed).shuffle(tasks)
 
         for task in tasks:
             self.task_queue.put(task)
 
         log_info(f"running {len(tasks)} tasks")
+        log_info(f"there is {self.exp.num_procs} processors")
 
         processes = []
 

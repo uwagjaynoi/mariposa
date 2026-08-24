@@ -33,7 +33,7 @@ def _try_build_core(args):
         f.write("(get-unsat-core)\n")
 
     solver_args = [
-        "./bin/z3-4.12.5",
+        "./bin/z3-4.16.0",
         f"-t:{CORE_TIME_LIMIT_SEC*1000}",
         "unsat_core=true",
         mut_path,
@@ -90,7 +90,7 @@ def _build_trace(args):
     mut_path, trace_path, seeds = args
 
     solver_args = [
-        "./bin/z3-4.12.5",
+        "./bin/z3-4.16.0",
         f"-t:{TRACE_TIME_LIMIT_SEC*1000}",
         mut_path,
         "trace=true",
@@ -393,4 +393,3 @@ class TraceDebugger2:
         in_f.close()
         ot_f.close()
         print(f"created candidate: {cand_path}")
-

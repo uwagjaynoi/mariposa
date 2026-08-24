@@ -101,8 +101,9 @@ def choose_action(actions):
 
 
 class InformedEditor(QueryEditor):
-    def __init__(self, query_path: str, pa: ProofAnalyzer, ti: MutantInfo):
-        super().__init__(query_path)
+    def __init__(self, query_path: str, pa: ProofAnalyzer, ti: MutantInfo,
+                 set_seed=None):
+        super().__init__(query_path, set_seed=set_seed)
         assert isinstance(pa, ProofAnalyzer)
         self.proof: ProofAnalyzer = pa
         assert isinstance(ti, MutantInfo)

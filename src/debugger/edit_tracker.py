@@ -145,6 +145,7 @@ class EditTracker(MutantBuilder):
             self.orig_path,
             proof,
             trace,
+            set_seed=self.options.set_seed,
         )
         return self._editor
 

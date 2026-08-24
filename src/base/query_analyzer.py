@@ -20,7 +20,7 @@ class FailureType(Enum):
 
     def __hash__(self):
         return hash(str(self))
-    
+
     def __eq__(self, other):
         return str(self) == str(other)
 
@@ -34,10 +34,10 @@ class Stability(Enum):
 
     def __str__(self):
         return self.value
-    
+
     def __hash__(self):
         return hash(str(self))
-    
+
     def __eq__(self, other):
         return str(self) == str(other)
 
@@ -124,13 +124,13 @@ class QueryAnalyzer:
         value = self.r_solvable/100
         _, p_value = proportions_ztest(count=success,
                                         nobs=size,
-                                        value=value, 
+                                        value=value,
                                         alternative='smaller')
         if p_value <= self.confidence:
             return Stability.UNSOLVABLE
 
         value = self.r_stable/100
-        _, p_value = proportions_ztest(count=success, 
+        _, p_value = proportions_ztest(count=success,
                                         nobs=size,
                                         value=value,
                                         alternative='smaller')
@@ -142,8 +142,8 @@ class QueryAnalyzer:
             if p_value <= self.confidence and \
                 np.mean(group_blob[1][valid_indices]) < self._timeout * self.discount:
                 return Stability.UNSTABLE
-    
-        _, p_value = proportions_ztest(count=success, 
+
+        _, p_value = proportions_ztest(count=success,
                                         nobs=size,
                                         value=value,
                                         alternative='larger')
