@@ -48,10 +48,6 @@ def parse_args():
         help="forward --early to Caza, enabling its final early-stop stability pass",
     )
     parser.add_argument(
-        "--skip-filter", action="store_true",
-        help="forward --skip-filter to Caza, bypassing its quick filter stage",
-    )
-    parser.add_argument(
         "--fast-proof",
         action="store_true",
         help="forward --fast-proof to Caza and retain the debugger artifact cache",
@@ -152,15 +148,13 @@ def main():
                 command.extend(["--set-seed", args.set_seed])
             if args.early:
                 command.append("--early")
-            if args.skip_filter:
-                command.append("--skip-filter")
             if args.fast_proof:
                 command.append("--fast-proof")
             if args.sort:
                 command.extend(["--sort", args.sort])
             if args.all_ranks:
                 command.append("--all-ranks")
-                command.extend(["--csv-index", str(index)])
+            command.extend(["--csv-index", str(index)])
             command.append(str(query))
             command_text = shlex.join(command)
             log_marker(

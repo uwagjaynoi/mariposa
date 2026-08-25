@@ -189,9 +189,10 @@ def build_timing_row(csv_index, query_path, started_at, timings, candidate_resul
         "query": os.path.basename(query_path),
         "start_time": started_at.isoformat(timespec="seconds"),
         "end_time": datetime.now().isoformat(timespec="seconds"),
-        "initial_stability_seconds": f"{elapsed_for('initial stability check'):.3f}",
-        "debugger_seconds": f"{elapsed_for('build debugger trace and proof'):.3f}",
-        "finding_fixes_seconds": f"{elapsed_for('finding fixes'):.3f}",
+        "initial stability check": f"{elapsed_for('initial stability check'):.3f}",
+        "build trace and proof": f"{elapsed_for('build trace and proof'):.3f}",
+
+        "finding fixes": f"{elapsed_for('finding fixes'):.3f}",
         "verify_seconds": f"{elapsed_for('verify candidates'):.3f}",
         "filter_analysis_seconds": f"{elapsed_for('filter broken candidates'):.3f}",
         "filter_experiment_seconds": f"{elapsed_for('filter candidates experiment'):.3f}",
@@ -268,11 +269,6 @@ def main():
         ),
     )
     p.add_argument(
-        "--skip-filter",
-        action="store_true",
-        help="skip the quick filter experiment and carve step",
-    )
-    p.add_argument(
         "--fast-proof",
         action="store_true",
         help="use only cached trace and proof artifacts; construct no debugger artifacts",
@@ -314,79 +310,62 @@ def main():
         external_timings,
     ):
         print("Input query is already stable; skipping Caza debugging")
-        append_timing_stats(
-            args.csv_index, args.query_path, call_started_at, external_timings, []
-        )
-        if args.all_ranks:
-            append_rank_stability_stats(
-                args.csv_index, args.query_path, call_started_at, external_timings, 0, []
+
+        if args.csv_index:
+            append_timing_stats(
+                args.csv_index, args.query_path, call_started_at, external_timings, []
             )
-        print_external_call_stats(external_timings)
+            # if args.all_ranks:
+            #     append_rank_stability_stats(
+            #         args.csv_index, args.query_path, call_started_at, external_timings, 0, []
+            #     )
+        else:
+            print_external_call_stats(external_timings)
         return
 
-    # print("Although not stable, this is a test anyway")
-    # print_external_call_stats(external_timings)
-    # return
-
-
     print("Starting Cazamariposas")
-    #set Caza options
     options = DebugOptions()
     options.verbose = True
     options.is_verus = True
     options.retry_failed = True
     options.set_seed = args.set_seed
     options.cached_proofs_only = args.fast_proof
-    # Keep build_all's phase timings in the same report.  They are marked as
-    # nested so the total does not count get_debugger twice.
     options.timing_records = external_timings
 
     experiment_seed_arg = (
         "" if args.set_seed is None else f" --set-seed {args.set_seed:x}"
     )
 
-    #for some tasks the default 30 sec per proof and 120 total sec is not enough
     options.per_proof_time_sec = 90
-    options.total_proof_time_sec = 1800
+    options.total_proof_time_sec = 240
 
-    #Mutate query until we reach a failure trace and a proof object
     dbg = timed_call(
-        "build debugger trace and proof",
+        "build trace and proof",
         lambda: get_debugger(args.query_path, options),
         external_timings,
     )
-
-    # Caza needs both a proof object and a candidate failure trace.
     if dbg.status in {DebugStatus.NO_PROOF, DebugStatus.NO_TRACE}:
         missing = "proof object" if dbg.status == DebugStatus.NO_PROOF else "failure trace"
         logging.error(f":( could not get any mutant to produce a {missing}")
-        append_timing_stats(
-            args.csv_index, args.query_path, call_started_at, external_timings, []
-        )
-        if args.all_ranks:
-            append_rank_stability_stats(
-                args.csv_index, args.query_path, call_started_at, external_timings, 0, []
+        if args.csv_index:
+            append_timing_stats(
+                args.csv_index, args.query_path, call_started_at, external_timings, []
             )
-        print_external_call_stats(external_timings)
+            # if args.all_ranks:
+            #     append_rank_stability_stats(
+            #         args.csv_index, args.query_path, call_started_at, external_timings, 0, []
+            #     )
+        else:
+            print_external_call_stats(external_timings)
         return
-
     print("Found failure trace and proof object")
-
-    #If we could not produce a proof object, Caza cannot find fixes
-    if dbg.status == DebugStatus.NO_PROOF:
-        logging.error(":( could not get any mutant to produce a proof object")
-        return
 
     proj_name = dbg.proj_name
     clean_up(proj_name)
 
     #produces candidate smt2 files at data/projs/<name>/base.z3/{edit_id}.smt2
-    #dbg.tracker.edit_infos gets populated with ___
     ranked_ids = timed_call("finding fixes", dbg.create_project, external_timings)
-    # 10 fixes
-
     print("Produced candidate smt2 files")
-
     project_dir = f"data/projs/{proj_name}/base.z3"
 
     verification_times = {}
