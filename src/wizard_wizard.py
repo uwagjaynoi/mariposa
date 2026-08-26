@@ -60,10 +60,6 @@ def parse_args():
         default=None,
         help="with --early, forward rank, verify-time, or verify-time/rank-prior ordering to Caza",
     )
-    parser.add_argument(
-        "--all-ranks", action="store_true",
-        help="with --early --sort, measure every surviving Caza rank",
-    )
     return parser.parse_args()
 
 
@@ -107,8 +103,6 @@ def main():
         raise ValueError("--limit must be non-negative")
     if args.sort and not args.early:
         raise ValueError("--sort requires --early")
-    if args.all_ranks and (not args.early or not args.sort):
-        raise ValueError("--all-ranks requires --early --sort")
 
     queries = sorted(input_dir.rglob("*.smt2"))
     if args.limit is not None:
@@ -132,10 +126,8 @@ def main():
         output.write(f"input directory: {input_dir}\nqueries: {len(queries)}\n")
         output.write(f"{debug_cache_action} debugger cache: {debug_root}\n")
         output.write(f"early stopping: {args.early}\n")
-        output.write(f"skip filter: {args.skip_filter}\n")
         output.write(f"fast proof: {args.fast_proof}\n")
         output.write(f"ranked ordering: {args.sort or 'none'}\n")
-        output.write(f"all ranks: {args.all_ranks}\n")
         output.write(f"set seed: {args.set_seed}\n")
         output.flush()
 
@@ -152,8 +144,6 @@ def main():
                 command.append("--fast-proof")
             if args.sort:
                 command.extend(["--sort", args.sort])
-            if args.all_ranks:
-                command.append("--all-ranks")
             command.extend(["--csv-index", str(index)])
             command.append(str(query))
             command_text = shlex.join(command)
