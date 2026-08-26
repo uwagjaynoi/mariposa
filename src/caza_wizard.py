@@ -61,13 +61,22 @@ def rank_priority(rank):
     return 1
 
 
-def verify_and_filter_ranked_candidates(project_dir, ranked_ids, set_seed, timings):
+def verification_sort_key(sort_mode, elapsed, rank, edit_id):
+    """Order by raw verification time or time divided by the rank prior."""
+    if sort_mode == "time":
+        return (elapsed, rank, edit_id)
+    return (elapsed / rank_priority(rank), rank, edit_id)
+
+
+def verify_and_filter_ranked_candidates(
+    project_dir, ranked_ids, set_seed, sort_mode, timings
+):
     """Run verify and filter while retaining each candidate's vanilla time.
 
     This is the in-process equivalent of Caza's ``exper_wizard multiple -e
     verify`` and ``analysis_wizard filter`` calls.  It follows the filter's
-    360-second budget, but orders passing candidates by verification time
-    divided by the supplied rank prior rather than raw verification time.
+    360-second budget.  ``sort_mode`` selects raw verification time or that
+    time divided by the supplied rank prior.
     """
     project = FACT.get_project_by_path(project_dir)
     experiment = FACT.get_exper(
@@ -90,7 +99,7 @@ def verify_and_filter_ranked_candidates(project_dir, ranked_ids, set_seed, timin
     def heuristic(edit_id):
         rank = rank_by_id.get(edit_id, len(RANK_PRIORITIES) + 1)
         elapsed = verification_times[edit_id]
-        return (elapsed / rank_priority(rank), rank, edit_id)
+        return verification_sort_key(sort_mode, elapsed, rank, edit_id)
 
     filtered_dir = project_dir.replace("/base.z3", ".filtered/base.z3")
 
@@ -109,9 +118,11 @@ def verify_and_filter_ranked_candidates(project_dir, ranked_ids, set_seed, timin
             selected.append(edit_id)
             rank = rank_by_id.get(edit_id, None)
             prior = rank_priority(rank) if rank is not None else 1
+            score = heuristic(edit_id)[0] / 1000
+            score_label = "t" if sort_mode == "time" else "t/p"
             print(
                 f"verify candidate {edit_id}: {elapsed / 1000:.3f}s; "
-                f"rank={rank}; p={prior}; t/p={elapsed / 1000 / prior:.3f}"
+                f"rank={rank}; p={prior}; {score_label}={score:.3f}"
             )
         print(
             f"selected {len(selected)} verified candidates to {filtered_dir} "
@@ -276,10 +287,10 @@ def main():
     p.add_argument(
         "--sort",
         nargs="?",
-        choices=("rank", "div"),
+        choices=("rank", "time", "div"),
         const="rank",
         default=None,
-        help="with --early, order by Caza rank or by vanilla verify time/rank prior",
+        help="with --early, order by Caza rank, vanilla verify time, or vanilla verify time/rank prior",
     )
     p.add_argument(
         "--all-ranks",
@@ -372,9 +383,9 @@ def main():
     rank_by_id = {
         edit_id: rank for rank, edit_id in enumerate(ranked_ids, start=1)
     }
-    if args.sort == "div":
+    if args.sort in {"time", "div"}:
         verification_times, rank_by_id = verify_and_filter_ranked_candidates(
-            project_dir, ranked_ids, args.set_seed, external_timings
+            project_dir, ranked_ids, args.set_seed, args.sort, external_timings
         )
     else:
         # Check if proof is broken to fail fast.
@@ -430,23 +441,26 @@ def main():
             print("Ran early-stop stability checks until a stable fix was found")
         stable_paths = []
         candidate_paths = list_smt2_files(filter_dir)
-        if args.sort == "div":
+        if args.sort in {"time", "div"}:
             candidate_paths.sort(
                 key=lambda path: (
-                    verification_times.get(
-                        os.path.splitext(os.path.basename(path))[0], float("inf")
-                    )
-                    / rank_priority(
+                    verification_sort_key(
+                        args.sort,
+                        verification_times.get(
+                            os.path.splitext(os.path.basename(path))[0], float("inf")
+                        ),
                         rank_by_id.get(
                             os.path.splitext(os.path.basename(path))[0],
                             len(RANK_PRIORITIES) + 1,
-                        )
-                    ),
-                    rank_by_id.get(os.path.splitext(os.path.basename(path))[0], float("inf")),
-                    path,
+                        ),
+                        path,
+                    )
                 )
             )
-            print("Checking candidates by increasing verify-time/rank-prior score")
+            if args.sort == "time":
+                print("Checking candidates by increasing vanilla verification time")
+            else:
+                print("Checking candidates by increasing verify-time/rank-prior score")
         elif args.sort == "rank":
             candidate_paths.sort(
                 key=lambda path: (
