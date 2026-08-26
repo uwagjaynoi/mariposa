@@ -59,10 +59,10 @@ def parse_args():
     parser.add_argument(
         "--sort",
         nargs="?",
-        choices=("rank", "div"),
+        choices=("rank", "time", "div"),
         const="rank",
         default=None,
-        help="with --early, forward rank or verify-time/rank-prior ordering to Caza",
+        help="with --early, forward rank, verify-time, or verify-time/rank-prior ordering to Caza",
     )
     parser.add_argument(
         "--all-ranks", action="store_true",
