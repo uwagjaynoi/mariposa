@@ -74,7 +74,7 @@ def verification_sort_key(sort_mode, elapsed, rank, edit_id):
     return edit_id
 
 def verify_and_filter_ranked_candidates(
-    project_dir, ranked_ids, set_seed
+    project_dir, ranked_ids, set_seed, early, experiment_seed_arg
 ):
     """Run verify and filter while retaining each candidate's vanilla time.
 
@@ -82,6 +82,28 @@ def verify_and_filter_ranked_candidates(
     verify`` and ``analysis_wizard filter`` calls.  It follows the filter's
     360-second budget.
     """
+    filtered_dir = project_dir.replace("/base.z3", ".filtered/base.z3")
+    if not early:
+        # Check if proof is broken to fail fast.
+        os.system(f"./src/exper_wizard.py multiple -e verify -i {project_dir} --clear"
+            f"{experiment_seed_arg}")
+        print("Checked for broken queries")
+
+        # Pick out the candidates that are not broken.
+        os.system(f"./src/analysis_wizard.py filter -i {project_dir}")
+        print("Filtered out broken queries")
+        os.system(f"./src/exper_wizard.py multiple -e filter -i {filtered_dir} --clear"
+            f"{experiment_seed_arg}")
+        # verified results among 10 + filter results
+        print("Ran mariposa on filtered queries")
+
+
+        os.system(
+            f"./src/analysis_wizard.py carve -e filter -i {filtered_dir}"
+        )
+        # verified but unstable results among 10 fixes
+        print("Carved out unstable queries")
+        return
 
     project = FACT.get_project_by_path(project_dir)
     experiment = FACT.get_exper(
@@ -100,8 +122,6 @@ def verify_and_filter_ranked_candidates(
         for edit_id, (_, elapsed) in verified.edit_results.items()
     }
     rank_by_id = {edit_id: rank for rank, edit_id in enumerate(ranked_ids, start=1)}
-
-    filtered_dir = project_dir.replace("/base.z3", ".filtered/base.z3")
 
     os.makedirs(filtered_dir, exist_ok=True)
     selected = []
@@ -316,7 +336,7 @@ def main():
     verification_times, rank_by_id = timed_call(
         VERIFY_FIXES,
         lambda: verify_and_filter_ranked_candidates(
-            project_dir, ranked_ids, args.set_seed
+            project_dir, ranked_ids, args.set_seed, args.early, experiment_seed_arg
         ),
         external_timings,
     )
