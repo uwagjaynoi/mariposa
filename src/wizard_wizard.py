@@ -19,6 +19,7 @@ from utils.option_utils import add_set_seed_option
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CAZA = REPO_ROOT / "src" / "caza_wizard.py"
+DEFAULT_TIMING_STATS_CSV = Path("log/caza.csv")
 
 
 def parse_args():
@@ -28,8 +29,14 @@ def parse_args():
         help="directory recursively containing .smt2 queries (default: data/verita_bad)",
     )
     parser.add_argument(
-        "-o", "--output-log", type=Path, default=Path("log/caza_verita_bad.log"),
-        help="combined Caza stdout/stderr log (default: log/caza_verita_bad.log)",
+        "-o", "--output-log", type=Path, default=Path("log/caza.log"),
+        help="combined Caza stdout/stderr log (default: log/caza.log)",
+    )
+    parser.add_argument(
+        "--timing-stats-csv",
+        type=Path,
+        default=DEFAULT_TIMING_STATS_CSV,
+        help="per-query Caza timing CSV (default: log/caza.csv)",
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--append", action="store_true", help="append to an existing log")
@@ -93,6 +100,7 @@ def main():
     args = parse_args()
     input_dir = args.input_dir.resolve()
     output_log = args.output_log.resolve()
+    timing_stats_csv = args.timing_stats_csv.resolve()
     caza = args.caza.resolve()
 
     if not input_dir.is_dir():
@@ -129,6 +137,7 @@ def main():
         output.write(f"fast proof: {args.fast_proof}\n")
         output.write(f"ranked ordering: {args.sort or 'none'}\n")
         output.write(f"set seed: {args.set_seed}\n")
+        output.write(f"timing CSV: {timing_stats_csv}\n")
         output.flush()
 
         for index, query in enumerate(queries, start=1):
@@ -145,6 +154,7 @@ def main():
             if args.sort:
                 command.extend(["--sort", args.sort])
             command.extend(["--csv-index", str(index)])
+            command.extend(["--timing-stats-csv", str(timing_stats_csv)])
             command.append(str(query))
             command_text = shlex.join(command)
             log_marker(

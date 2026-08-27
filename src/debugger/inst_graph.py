@@ -333,6 +333,13 @@ class TraceInstGraph(nx.DiGraph):
             return 0
         scores = []
         for qidx, ratio in sub_ratios.items():
-            scores.append((ratio, self.blames[qidx].stat_count))
+            # A dependency graph may mention a quantifier only as an edge
+            # endpoint.  Such a graph-only node has no blame/statistics entry
+            # and therefore cannot contribute to the ranking score.
+            blame = self.blames.get(qidx)
+            if blame is not None:
+                scores.append((ratio, blame.stat_count))
+        if not scores:
+            return 0
         scores = np.array(scores)
         return np.sum(scores[:, 0] * scores[:, 1])

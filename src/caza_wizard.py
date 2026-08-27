@@ -40,6 +40,7 @@ TIMING_FIELDS = [
     VERIFY_FIXES,
     CHECK_STABILITY,
     "total_seconds",
+    "result"
 ]
 
 def clean_up(proj_name):
@@ -73,16 +74,14 @@ def verification_sort_key(sort_mode, elapsed, rank, edit_id):
     return edit_id
 
 def verify_and_filter_ranked_candidates(
-    project_dir, ranked_ids, set_seed, sort_mode
+    project_dir, ranked_ids, set_seed
 ):
     """Run verify and filter while retaining each candidate's vanilla time.
 
     This is the in-process equivalent of Caza's ``exper_wizard multiple -e
     verify`` and ``analysis_wizard filter`` calls.  It follows the filter's
-    360-second budget.  ``sort_mode`` selects raw verification time or that
-    time divided by the supplied rank prior.
+    360-second budget.
     """
-    assert sort_mode in {"time", "div", "rank"}, f"unexpected sort mode: {sort_mode}"
 
     project = FACT.get_project_by_path(project_dir)
     experiment = FACT.get_exper(
@@ -102,34 +101,18 @@ def verify_and_filter_ranked_candidates(
     }
     rank_by_id = {edit_id: rank for rank, edit_id in enumerate(ranked_ids, start=1)}
 
-    def heuristic(edit_id):
-        rank = rank_by_id.get(edit_id, len(RANK_PRIORITIES) + 1)
-        elapsed = verification_times.get(edit_id, 1800000)
-        return verification_sort_key(sort_mode, elapsed, rank, edit_id)
-
     filtered_dir = project_dir.replace("/base.z3", ".filtered/base.z3")
-
-    if sort_mode == "time":
-        score_label = "t"
-    elif sort_mode == "div":
-        score_label = "t/p"
-    else:
-        score_label = "-r"
 
     os.makedirs(filtered_dir, exist_ok=True)
     selected = []
-    for edit_id in sorted(verified.passed_edits, key=heuristic):
+    for edit_id in verified.passed_edits:
         _, elapsed = verified.get_query_result(edit_id)
         source = project.get_path(edit_id)
         destination = os.path.join(filtered_dir, f"{edit_id}.smt2")
         shutil.copy(source, destination)
         selected.append(edit_id)
-        rank = rank_by_id.get(edit_id, None)
-        prior = rank_priority(rank) if rank is not None else 1
-        score = heuristic(edit_id)[0] / 1000
         print(
-            f"verify candidate {edit_id}: {elapsed / 1000:.3f}s; "
-            f"rank={rank}; p={prior}; {score_label}={score:.3f}"
+            f"verify candidate {edit_id}: {elapsed / 1000:.3f}s;"
         )
     print(
         f"selected {len(selected)} verified candidates to {filtered_dir}"
@@ -192,13 +175,12 @@ def print_external_call_stats(timings):
     total = sum(elapsed for _, elapsed, include_in_total in timings if include_in_total)
     print(f"{total:8.2f}s  total")
 
-
-def build_timing_row(csv_index, query_path, started_at, timings):
-    """Build the former slow2 timing columns directly from Caza timings."""
+def append_timing_stats(csv_index, query_path, started_at, timings, result, path):
+    """Append a row, extending older timing CSVs without losing old rows."""
+    fieldnames = TIMING_FIELDS
     def elapsed_for(label):
         return sum(elapsed for item_label, elapsed, _ in timings if item_label == label)
-
-    return {
+    row = {
         "index": csv_index,
         "query": os.path.basename(query_path),
         "start_time": started_at.isoformat(timespec="seconds"),
@@ -210,13 +192,8 @@ def build_timing_row(csv_index, query_path, started_at, timings):
         VERIFY_FIXES: f"{elapsed_for(VERIFY_FIXES):.3f}",
         CHECK_STABILITY: f"{elapsed_for(CHECK_STABILITY):.3f}",
         "total_seconds": f"{sum(elapsed for _, elapsed, include_in_total in timings if include_in_total):.3f}",
+        "result": result
     }
-
-def append_timing_stats(csv_index, query_path, started_at, timings):
-    """Append a row, extending older timing CSVs without losing old rows."""
-    path = TIMING_STATS_CSV
-    fieldnames = TIMING_FIELDS
-    row = build_timing_row(csv_index, query_path, started_at, timings)
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     needs_header = not os.path.exists(path) or os.path.getsize(path) == 0
@@ -265,6 +242,11 @@ def parse_args():
         help="with --early, order by Caza rank, vanilla verify time, or vanilla verify time/rank prior",
     )
     p.add_argument("--csv-index", default="", help=argparse.SUPPRESS)
+    p.add_argument(
+        "--timing-stats-csv",
+        default=TIMING_STATS_CSV,
+        help=f"per-query timing CSV (default: {TIMING_STATS_CSV})",
+    )
     args = p.parse_args()
     if args.sort and not args.early:
         p.error("--sort requires --early")
@@ -295,7 +277,7 @@ def main():
     )
 
     options.per_proof_time_sec = 90
-    options.total_proof_time_sec = 240
+    options.total_proof_time_sec = 7200
 
     dbg = timed_call(
         TRACE_PROOF,
@@ -307,10 +289,16 @@ def main():
             logging.error("No proof object found.")
         else:
             logging.error("No failure trace found. Probably the query is already stable.")
+        result = "no proof" if dbg.status == DebugStatus.NO_PROOF else "no trace"
 
         if args.csv_index:
             append_timing_stats(
-                args.csv_index, args.query_path, call_started_at, external_timings
+                args.csv_index,
+                args.query_path,
+                call_started_at,
+                external_timings,
+                result,
+                args.timing_stats_csv,
             )
         else:
             print_external_call_stats(external_timings)
@@ -325,14 +313,10 @@ def main():
     print("Produced candidate smt2 files")
     project_dir = f"data/projs/{proj_name}/base.z3"
 
-    verification_times = {}
-    rank_by_id = {
-        edit_id: rank for rank, edit_id in enumerate(ranked_ids, start=1)
-    }
     verification_times, rank_by_id = timed_call(
         VERIFY_FIXES,
         lambda: verify_and_filter_ranked_candidates(
-            project_dir, ranked_ids, args.set_seed, args.sort
+            project_dir, ranked_ids, args.set_seed
         ),
         external_timings,
     )
@@ -368,7 +352,7 @@ def main():
             )
         )
         print("Checking candidates by heuristic order")
-        def check_candidates():
+        def check_candidates_early():
             for index, candidate_path in enumerate(candidate_paths, start=1):
                 print(
                     f"Checking candidate {index}/{len(candidate_paths)} for stability: "
@@ -379,7 +363,7 @@ def main():
                     print("Found a stable fix; stopping further stability checks")
                     break
 
-        timed_call(CHECK_STABILITY, check_candidates, external_timings)
+        timed_call(CHECK_STABILITY, check_candidates_early, external_timings)
         stable_ids = [
             os.path.splitext(os.path.basename(path))[0]
             for path in stable_paths
@@ -419,7 +403,12 @@ def main():
         stable_ids = timed_call(CHECK_STABILITY, check_candidates, external_timings)
 
     append_timing_stats(
-        args.csv_index, args.query_path, call_started_at, external_timings
+        args.csv_index,
+        args.query_path,
+        call_started_at,
+        external_timings,
+        f"{len(stable_ids)} fixes" if stable_ids else "no fixes",
+        args.timing_stats_csv,
     )
 
     if not stable_ids:
