@@ -103,7 +103,7 @@ def verify_and_filter_ranked_candidates(
         )
         # verified but unstable results among 10 fixes
         print("Carved out unstable queries")
-        return
+        return [], []
 
     project = FACT.get_project_by_path(project_dir)
     experiment = FACT.get_exper(
