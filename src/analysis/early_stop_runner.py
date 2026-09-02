@@ -205,7 +205,7 @@ class EarlyStopRunner:
             submit_available()
 
             elapsed = time.time() - start_time
-            if elapsed - prev_time > 10:
+            if elapsed - prev_time > 600:
                 prev_time = elapsed
                 remaining = total_size - completed_size
                 print_eta(elapsed, remaining, total_size)

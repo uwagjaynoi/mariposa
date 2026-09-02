@@ -7,8 +7,9 @@ The check index is one-based and uses the same retained-check numbering as
 """
 
 import argparse
-from contextlib import redirect_stdout
+from contextlib import contextmanager, nullcontext, redirect_stderr, redirect_stdout
 from io import StringIO
+import os
 from pathlib import Path
 import re
 import shutil
@@ -25,6 +26,39 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 STABLE_CANDIDATE = re.compile(r"^\s+[0-9a-f]+: .+ -> (.+\.smt2)$")
 
 
+class Tee:
+    """Write Caza's Python output to the terminal and an in-memory buffer."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, text):
+        for stream in self.streams:
+            stream.write(text)
+        return len(text)
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
+@contextmanager
+def silence_child_output():
+    """Suppress output inherited by commands started inside Caza."""
+    with open(os.devnull, "w") as null:
+        saved_stdout = os.dup(1)
+        saved_stderr = os.dup(2)
+        try:
+            os.dup2(null.fileno(), 1)
+            os.dup2(null.fileno(), 2)
+            yield
+        finally:
+            os.dup2(saved_stdout, 1)
+            os.dup2(saved_stderr, 2)
+            os.close(saved_stdout)
+            os.close(saved_stderr)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_path", type=Path, help="SMT2 input with check-sat commands")
@@ -35,6 +69,13 @@ def parse_args():
         nargs="?",
         help="one-based ordinal of the retained check-sat command",
         default=1,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="show Caza output; omit for quiet mode",
     )
     args = parser.parse_args()
     if args.check_index < 1:
@@ -111,12 +152,14 @@ def main():
             str(query_path),
         ]
         try:
-            with redirect_stdout(caza_stdout):
+            output_stream = Tee(sys.stdout, caza_stdout) if args.verbose else caza_stdout
+            error_stream = sys.stderr if args.verbose else StringIO()
+            child_output = nullcontext() if args.verbose else silence_child_output()
+            with child_output, redirect_stdout(output_stream), redirect_stderr(error_stream):
                 status = caza_main()
         finally:
             sys.argv = previous_argv
 
-        print(caza_stdout.getvalue(), end="")
         if status == DebugStatus.NO_TRACE:
             print("No failure trace found. Probably the query is already stable.")
             return
@@ -138,7 +181,6 @@ def main():
         output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(candidate, output_path)
         print(f"Wrote stable repair to {output_path}")
-        input(f"Temporary files remain in {workspace}. Press Enter to recycle them.")
 
 
 if __name__ == "__main__":
