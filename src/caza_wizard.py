@@ -282,6 +282,7 @@ def main():
     external_timings = []
     print("Parsing...")
     args = parse_args()
+    print(f"Argument path is {args.query_path}")
 
     print("Starting Cazamariposas")
     options = DebugOptions()
@@ -322,7 +323,7 @@ def main():
             )
         else:
             print_external_call_stats(external_timings)
-        return
+        return dbg.status
     print("Found failure trace and proof object")
 
     proj_name = dbg.proj_name
@@ -441,6 +442,7 @@ def main():
         qname, action = edit.get_singleton_edit()
         print(f"    {edit_id}: {action.value} {qname} -> {edit.query_path}")
     print_external_call_stats(external_timings)
+    return DebugStatus.FIX_FOUND if stable_ids else DebugStatus.FIX_NOT_FOUND
 
 
 if __name__ == "__main__":

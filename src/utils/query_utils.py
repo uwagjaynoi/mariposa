@@ -164,6 +164,7 @@ def find_verus_procedure_name(file):
             or line.startswith('(set-info :comment ";; Function-Termination')
             or line.startswith('(set-info :comment ";; Function-Recommends')
             or line.startswith('(set-info :comment ";; Function-Expand-Errors')
+            or line.startswith('(set-info :comment ";; Spec-Termination')
         ):
             return line[23:-3] + "\n" + prev[23:].split(" ")[0][:-3]
         prev = line
@@ -277,7 +278,7 @@ def diff_queries(this, that):
 #             orig_path,
 #             "--z3-trace-log-path",
 #             trace_path,
-#         ], 
+#         ],
 #     )[0]
 
 #     lines = lines.split("\n")
@@ -290,7 +291,7 @@ def diff_queries(this, that):
 #         line = line.split(": ")
 #         qid, count = line[0], int(line[1])
 #         qids[qid] = count
-    
+
 #     if len(qids) == 0:
 #         log_warn(f"no insts found in trace: {trace_path}")
 

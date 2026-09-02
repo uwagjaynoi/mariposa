@@ -73,7 +73,7 @@ class DebugOptions:
         self.mode = DbgMode.AUTO  # auto-conf
 
     def resolve_input_path(self, input_path):
-        if len(input_path) == 10:
+        if len(input_path) == 10: # TODO: remove this hack
             input_path = f"dbg/{input_path}"
         if input_path.startswith("dbg/") or input_path.startswith("./dbg/"):
             assert not input_path.endswith(".smt2")
