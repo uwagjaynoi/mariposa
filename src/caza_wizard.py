@@ -1,4 +1,4 @@
-#USAGE (from root): python3 ./src/caza_wizard.py <path to unstable query (.smt2)>
+#!/usr/bin/env python3
 
 import argparse
 import csv
@@ -96,7 +96,6 @@ def verify_and_filter_ranked_candidates(
             f"{experiment_seed_arg}")
         # verified results among 10 + filter results
         print("Ran mariposa on filtered queries")
-
 
         os.system(
             f"./src/analysis_wizard.py carve -e filter -i {filtered_dir}"
