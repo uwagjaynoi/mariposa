@@ -6,7 +6,6 @@ The check index is one-based and uses the same retained-check numbering as
 ``<name>.1.smt2`` output of that action.
 """
 
-
 import argparse
 from contextlib import contextmanager, nullcontext, redirect_stderr, redirect_stdout
 from io import StringIO
@@ -17,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import secrets
 
 from base.defs import MARIPOSA
 from caza_wizard import main as caza_main
@@ -213,22 +213,11 @@ def test(args):
         workspace = Path(temp_dir)
         query_path = split_query(input_path, args.check_index, workspace)
         caza_stdout = StringIO()
-        previous_argv = sys.argv
-        sys.argv = [
-            "caza_wizard.py",
-            "--early",
-            "--sort",
-            "time",
-            str(query_path),
-        ]
-        try:
-            output_stream = Tee(sys.stdout, caza_stdout) if args.verbose else caza_stdout
-            error_stream = sys.stderr if args.verbose else StringIO()
-            child_output = nullcontext() if args.verbose else silence_child_output()
-            with child_output, redirect_stdout(output_stream), redirect_stderr(error_stream):
-                result = is_early_stable(str(query_path), 128736132)
-        finally:
-            sys.argv = previous_argv
+        output_stream = Tee(sys.stdout, caza_stdout) if args.verbose else caza_stdout
+        error_stream = sys.stderr if args.verbose else StringIO()
+        child_output = nullcontext() if args.verbose else silence_child_output()
+        with child_output, redirect_stdout(output_stream), redirect_stderr(error_stream):
+            result = is_early_stable(str(query_path), secrets.randbits(64))
         print("Stable." if result else "Unstable.")
 
 
